@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: btcpayserver
+  labels:
+    app: btcpayserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: btcpayserver
+  template:
+    metadata:
+      labels:
+        app: btcpayserver
+    spec:
+      containers:
+      - name: btcpayserver
+        image: btcpayserver/btcpayserver:1.0.6.8
+        # Used for debug in k8s
+        #command: ["/bin/sleep"]
+        #args: ["1000"]
+        ports:
+        - containerPort: 49392
+        env:
+        #- name: BTCPAY_POSTGRES
+        #  value: "User ID=postgres;Host=postgresql-headless.postgresql;Port=5432;Database=btcpayserver-mainet"
+        - name: BTCPAY_NETWORK
+          value: "mainnet"
+        - name: BTCPAY_HOST
+          value: "btcpay.example.com"
+        - name: NBITCOIN_NETWORK
+          value: "mainnet"
+        - name: BTCPAYGEN_CRYPTO1
+          value: "btc"
+        - name: BTCPAY_BIND
+          value: "0.0.0.0:49392"
+        - name: BTCPAY_ROOTPATH
+          value: "/"
+        - name: SSL_POLICY
+          value: "Mozilla-Modern"
+        - name: BTCPAY_DEBUGLOG
+          value: "btcpay.log"
+        - name: BTCPAY_UPDATEURL
+          value: "https://api.github.com/repos/btcpayserver/btcpayserver/releases/latest"
+        - name: BTCPAY_DOCKERDEPLOYMENT
+          value: "true"
+        - name: BTCPAY_CHAINS
+          value: "btc"
+        - name: BTCPAY_BTCEXPLORERURL
+          value: "http://nbxplorer.bitcoind:32838/"
+
+        #- name: BTCPAY_SSHCONNECTION
+        #  value: "root@host.docker.internal"
+        #- name: BTCPAY_SSHTRUSTEDFINGERPRINTS
+        #  value: "${BTCPAY_SSHTRUSTEDFINGERPRINTS}"
+        #- name: BTCPAY_SSHKEYFILE
+        #  value: "${BTCPAY_SSHKEYFILE}"
+        #- name: BTCPAY_SSHAUTHORIZEDKEYS
+        #  value: "${BTCPAY_SSHAUTHORIZEDKEYS}"        
+        #- name: BTCPAY_BTCLIGHTNING
+        #  value: "type=clightning;server=unix://etc/clightning_bitcoin/lightning-rpc"
+        #- name: BTCPAY_BTCEXTERNALSPARK
+        #  value: "server=/spark/btc/;cookiefile=/etc/clightning_bitcoin_spark/.cookie"
+        #- name: BTCPAY_BTCEXTERNALCHARGE
+        #  value: "server=/lightning-charge/btc/;cookiefilepath=/etc/clightning_bitcoin_charge/.cookie"
+        #- name: BTCPAY_BTCEXTERNALRTL
+        #  value: server=/rtl/api/authenticate/cookie;cookiefile=/etc/clightning_bitcoin_rtl/.cookie"
+        #- name: BTCPAY_BTCEXTERNALCLIGHTNINGREST
+        #  value: server=/clightning-rest/btc;macaroonfilepath=/etc/clightning_bitcoin_rest/certs/access.macaroon;macaroondirectorypath=/etc/clightning_bitcoin_rest/certs"
+        #- name: VIRTUAL_NETWORK
+        #  value: "nginx-proxy"
+        #- name: VIRTUAL_PORT
+        #  value: "49392"
+        #- name: VIRTUAL_HOST
+        #  value: "${BTCPAY_HOST},${BTCPAY_ADDITIONAL_HOSTS}"
+        #- name: VIRTUAL_HOST_NAME
+        #  value: "btcpay"
+        #- name: LETSENCRYPT_HOST
+        #  value: "${BTCPAY_HOST},${BTCPAY_ADDITIONAL_HOSTS}"
+        #- name: LETSENCRYPT_EMAIL
+        #  value: "${LETSENCRYPT_EMAIL:-<no value>}"
+        #- name: HIDDENSERVICE_NAME
+        #  value: "BTCPayServer"
+        #- name: HIDDENSERVICE_REVERSEPROXY
+        #  value: "nginx"
+        #- name: BTCPAY_TORRCFILE
+        #  value: "/usr/local/etc/tor/torrc-2"
+        #- name: BTCPAY_SOCKSENDPOINT
+        #  value: "tor:9050"
+        volumeMounts:
+        - mountPath: /root/.nbxplorer
+          name: nbxplorer-datadir
+        - mountPath: /datadir
+          name: btcpay-datadir
+        #- "/root/.ssh/authorized_keys:${BTCPAY_SSHAUTHORIZEDKEYS}"
+        #- "clightning_bitcoin_spark:/etc/clightning_bitcoin_spark"
+        #- "clightning_bitcoin_charge:/etc/clightning_bitcoin_charge"
+        #- "clightning_bitcoin_rtl_datadir:/etc/clightning_bitcoin_rtl"
+        #- "clightning_bitcoin_rest_datadir:/etc/clightning_bitcoin_rest"
+        #- "tor_servicesdir:/var/lib/tor/hidden_services"
+        #- "tor_torrcdir:/usr/local/etc/tor/"
+      volumes:
+      - name: nbxplorer-datadir
+        persistentVolumeClaim:
+          claimName: nbxplorer-datadir
+      - name: btcpay-datadir
+        persistentVolumeClaim:
+          claimName: btcpay-datadir
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: btcpay-datadir
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: btcpay-datadir
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  local:
+    path: /path/to/btcpay-datadir
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: btcpayserver
+spec:
+  selector:
+    app: btcpayserver
+  ports:
+    - protocol: TCP
+      port: 49392
+      targetPort: 49392

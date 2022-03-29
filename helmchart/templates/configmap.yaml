@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: btcpay-settings
+data:
+  settings.config: |
+    ### Global settings ###
+    network={{ .Values.network }}
+    
+    ### Server settings ###
+    #port=23000
+    #bind=127.0.0.1
+    #httpscertificatefilepath=devtest.pfx
+    #httpscertificatefilepassword=toto
+    
+    ### Database ###
+    #postgres=User ID=root;Password=myPassword;Host=localhost;Port=5432;Database=myDataBase;
+    #mysql=User ID=root;Password=myPassword;Host=localhost;Port=3306;Database=myDataBase;
+    sqlitefile=sqlite.db
+    
+    ### NBXplorer settings ###
+    BTC.explorer.url=http://nbxplorer:{{ .Values.nbxplorer.service.port }}/
+    BTC.explorer.cookiefile=/root/.nbxplorer/TestNet/.cookie
+    #BTC.lightning=/root/.lightning/lightning-rpc
+    #BTC.lightning=https://apitoken:API_TOKEN_SECRET@charge.example.com/

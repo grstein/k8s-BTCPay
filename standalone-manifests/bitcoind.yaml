@@ -1,0 +1,201 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: btcpayserver-bitcoind
+  labels:
+    app: bitcoind
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bitcoind
+  template:
+    metadata:
+      labels:
+        app: bitcoind
+    spec:
+      containers:
+      - name: btcpayserver-bitcoind
+        image: btcpayserver/bitcoin:0.21.0
+        ports:
+        - containerPort: 43782
+        env:
+        - name: "BITCOIN_NETWORK"
+          value: "mainnet"
+        - name: "BITCOIN_WALLETDIR"
+          value: "/walletdata"
+        - name: "BITCOIN_EXTRA_ARGS"
+          value: |
+            dbcache=1024
+            par=16
+            banscore=10
+            rpcport=43782
+            rpcbind=0.0.0.0:43782
+            rpcallowip=0.0.0.0/0
+            port=39388
+            whitelist=0.0.0.0/0
+            maxmempool=500
+            #prune=50000
+            #onion=tor:9050
+            #rpcuser=rpcuser
+            #rpcpassword=tothemoon123
+            # We need to use rpcauth because we also need cookieauth. rpcpassword disabled cookie file auth.
+            # Be careful if you copy the line below from the docker-compose.yml! A dollar sign is escaped.
+            rpcauth=btcrpc:a6a5gwgsgsdgsdgsdgb6152915515f6a9cca806sdgsdgsxc346ba74f812c61e48241d523778b8
+        - name: "HIDDENSERVICE_NAME"
+          value: "BTC-P2P,BTC-RPC"
+        - name: "BTC-P2P_HIDDENSERVICE_VIRTUAL_PORT"
+          value: "8333"
+        - name: "BTC-P2P_HIDDENSERVICE_PORT"
+          value: "39388"
+        - name: "BTC-RPC_HIDDENSERVICE_VIRTUAL_PORT"
+          value: "8332"
+        - name: "BTC-RPC_HIDDENSERVICE_PORT"
+          value: "43782"
+        volumeMounts:
+        - mountPath: /data
+          name: bitcoin-datadir
+        - mountPath: /walletdata
+          name: bitcoin-wallet-datadir
+        - mountPath: /home/tor/.tor
+          name: tor-datadir
+      volumes:
+      - name: bitcoin-datadir
+        persistentVolumeClaim:
+          claimName: bitcoin-datadir
+      - name: bitcoin-wallet-datadir
+        persistentVolumeClaim:
+          claimName: bitcoin-wallet-datadir
+      - name: tor-datadir
+        persistentVolumeClaim:
+          claimName: tor-datadir
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bitcoin-datadir
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 500Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bitcoin-wallet-datadir
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Mi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tor-datadir
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 25Mi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: tor-datadir
+spec:
+  capacity:
+    storage: 25Mi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  local:
+    path: /path/to/volumes/tor-datadir
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - hostname
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bitcoin-wallet-datadir
+spec:
+  capacity:
+    storage: 50Mi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  local:
+    path: /path/to/volumes/bitcoin-wallet-datadir
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - hostname
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bitcoin-datadir
+spec:
+  capacity:
+    storage: 500Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  local:
+    path: /path/to/volumes/bitcoin-datadir
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bitcoind-rpc
+spec:
+  selector:
+    app: bitcoind
+  ports:
+    - protocol: TCP
+      port: 43782
+      targetPort: 43782
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bitcoind
+spec:
+  selector:
+    app: bitcoind
+  ports:
+    - protocol: TCP
+      port: 39388
+      targetPort: 39388

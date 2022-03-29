@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bitcoind
+  labels:
+    {{- include "btcpayserver.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.bitcoind.autoscaling.enabled }}
+  replicas: {{ .Values.bitcoind.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "bitcoind.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.bitcoind.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "bitcoind.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.bitcoind.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: bitcoind
+          securityContext:
+            {{- toYaml .Values.bitcoind.securityContext | nindent 12 }}
+          image: "{{ .Values.bitcoind.image.repository }}:{{ .Values.bitcoind.image.tag }}"
+          imagePullPolicy: {{ .Values.bitcoind.image.pullPolicy }}
+          env:
+            - name: "BITCOIN_NETWORK"
+              value: "{{ .Values.network }}"
+            - name: "BITCOIN_WALLETDIR"
+              value: "/walletdata"
+            - name: "BITCOIN_EXTRA_ARGS"
+              value: |
+                dbcache=1024
+                par=16
+                banscore=10
+                rpcport=43782
+                rpcbind=0.0.0.0:43782
+                rpcallowip=0.0.0.0/0
+                port=39388
+                whitelist=0.0.0.0/0
+                maxmempool=500
+                #prune=50000
+                #onion=tor:9050
+                #rpcuser=rpcuser
+                #rpcpassword=tothemoon123
+                # We need to use rpcauth because we also need cookieauth. rpcpassword disabled cookie file auth.
+                # Be careful if you copy the line below from the docker-compose.yml! A dollar sign is escaped.
+                rpcauth=btcrpc:a6a5acscascsaasc5b10a234$$ab6152915515f6a9cca80acscascsaca94c346ba74f812c61e48241d523778b8
+            - name: "HIDDENSERVICE_NAME"
+              value: "BTC-P2P,BTC-RPC"
+            - name: "BTC-P2P_HIDDENSERVICE_VIRTUAL_PORT"
+              value: "8333"
+            - name: "BTC-P2P_HIDDENSERVICE_PORT"
+              value: "39388"
+            - name: "BTC-RPC_HIDDENSERVICE_VIRTUAL_PORT"
+              value: "8332"
+            - name: "BTC-RPC_HIDDENSERVICE_PORT"
+              value: "43782"
+            {{- toYaml .Values.btcpayserver.env | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.bitcoind.service.httpPort }}
+              protocol: TCP
+            - name: rpc
+              containerPort: {{ .Values.bitcoind.service.rpcPort }}
+              protocol: TCP
+          # livenessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
+          # readinessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
+          resources:
+            {{- toYaml .Values.btcpayserver.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /data
+              name: bitcoin-datadir
+            - mountPath: /walletdata
+              name: bitcoin-wallet-datadir
+            - mountPath: /home/tor/.tor
+              name: tor-datadir
+      volumes:
+        - name: bitcoin-datadir
+          persistentVolumeClaim:
+            claimName: bitcoin-datadir
+        - name: bitcoin-wallet-datadir
+          persistentVolumeClaim:
+            claimName: bitcoin-wallet-datadir
+        - name: tor-datadir
+          persistentVolumeClaim:
+            claimName: tor-datadir
+      {{- with .Values.btcpayserver.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.btcpayserver.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.btcpayserver.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,122 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: manual-prov
+provisioner: kubernetes.io/manual
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nbxplorer-datadir
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "manual-prov"
+  local:
+    path: /path/to/testnet/nbxplorer-datadir
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - hostname
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: btcpay-datadir
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "manual-prov"
+  local:
+    path: /path/to/testnet/btcpay-datadir
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - hostname
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: tor-datadir
+spec:
+  capacity:
+    storage: 25Mi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "manual-prov"
+  local:
+    path: /path/to/testnet/tor-datadir
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - hostname
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bitcoin-wallet-datadir
+spec:
+  capacity:
+    storage: 50Mi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "manual-prov"
+  local:
+    path: /path/to/testnet/bitcoin-wallet-datadir
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - hostname
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bitcoin-datadir
+spec:
+  capacity:
+    storage: 500Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "manual-prov"
+  local:
+    path: /path/to/testnet/bitcoin-datadir
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - hostname

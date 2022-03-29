@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nbxplorer
+  labels:
+    {{- include "btcpayserver.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.nbxplorer.autoscaling.enabled }}
+  replicas: {{ .Values.nbxplorer.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "nbxplorer.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.nbxplorer.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "nbxplorer.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.nbxplorer.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: nbxplorer
+          image: "{{ .Values.nbxplorer.image.repository }}:{{ .Values.nbxplorer.image.tag }}"
+          imagePullPolicy: {{ .Values.nbxplorer.image.pullPolicy }}
+          env:
+            - name: NBXPLORER_SIGNALFILESDIR
+              value: "/datadir"
+            - name: NBXPLORER_BIND
+              value: "0.0.0.0:{{ .Values.btcpayserver.service.port }}"
+            - name: NBXPLORER_NETWORK
+              value: "{{ .Values.network }}"
+            - name: NBXPLORER_BTCNODEENDPOINT
+              value: "bitcoind:{{ .Values.bitcoind.service.httpPort }}"
+            - name: NBXPLORER_BTCRPCURL
+              value: "http://bitcoind-rpc:{{ .Values.bitcoind.service.rpcPort }}/"
+            {{- toYaml .Values.nbxplorer.env | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.btcpayserver.service.port }}
+              protocol: TCP
+          # livenessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
+          # readinessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
+          resources:
+            {{- toYaml .Values.nbxplorer.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /datadir
+              name: nbxplorer-datadir
+            - mountPath: /root/.bitcoin
+              name: bitcoin-datadir
+      volumes:
+        - name: nbxplorer-datadir
+          persistentVolumeClaim:
+            claimName: nbxplorer-datadir
+        - name: bitcoin-datadir
+          persistentVolumeClaim:
+            claimName: bitcoin-datadir
+      {{- with .Values.nbxplorer.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nbxplorer.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nbxplorer.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

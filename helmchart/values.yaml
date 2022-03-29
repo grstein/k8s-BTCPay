@@ -1,0 +1,183 @@
+# It can be mainnet, testnet, ...
+network: testnet
+
+btcpayserver:
+  replicaCount: 1
+  image:
+    repository: btcpayserver/btcpayserver
+    tag: "1.0.6.8"
+    pullPolicy: IfNotPresent
+  env:
+  - name: BTCPAYGEN_CRYPTO1
+    value: "btc"
+  - name: SSL_POLICY
+    value: "Mozilla-Modern"
+  - name: BTCPAY_DEBUGLOG
+    value: "btcpay.log"
+  - name: BTCPAY_UPDATEURL
+    value: "https://api.github.com/repos/btcpayserver/btcpayserver/releases/latest"
+  - name: BTCPAY_CHAINS
+    value: "btc"
+  #- name: BTCPAY_POSTGRES
+  #  value: "User ID=postgres;Host=postgresql-headless.postgresql;Port=5432;Database=btcpayserver-mainet"
+  #- name: BTCPAY_SSHCONNECTION
+  #  value: "root@host.docker.internal"
+  #- name: BTCPAY_SSHTRUSTEDFINGERPRINTS
+  #  value: "${BTCPAY_SSHTRUSTEDFINGERPRINTS}"
+  #- name: BTCPAY_SSHKEYFILE
+  #  value: "${BTCPAY_SSHKEYFILE}"
+  #- name: BTCPAY_SSHAUTHORIZEDKEYS
+  #  value: "${BTCPAY_SSHAUTHORIZEDKEYS}"        
+  #- name: BTCPAY_BTCLIGHTNING
+  #  value: "type=clightning;server=unix://etc/clightning_bitcoin/lightning-rpc"
+  #- name: BTCPAY_BTCEXTERNALSPARK
+  #  value: "server=/spark/btc/;cookiefile=/etc/clightning_bitcoin_spark/.cookie"
+  #- name: BTCPAY_BTCEXTERNALCHARGE
+  #  value: "server=/lightning-charge/btc/;cookiefilepath=/etc/clightning_bitcoin_charge/.cookie"
+  #- name: BTCPAY_BTCEXTERNALRTL
+  #  value: server=/rtl/api/authenticate/cookie;cookiefile=/etc/clightning_bitcoin_rtl/.cookie"
+  #- name: BTCPAY_BTCEXTERNALCLIGHTNINGREST
+  #  value: server=/clightning-rest/btc;macaroonfilepath=/etc/clightning_bitcoin_rest/certs/access.macaroon;macaroondirectorypath=/etc/clightning_bitcoin_rest/certs"
+  #- name: VIRTUAL_NETWORK
+  #  value: "nginx-proxy"
+  #- name: VIRTUAL_PORT
+  #  value: "49392"
+  #- name: VIRTUAL_HOST
+  #  value: "${BTCPAY_HOST},${BTCPAY_ADDITIONAL_HOSTS}"
+  #- name: VIRTUAL_HOST_NAME
+  #  value: "btcpay"
+  #- name: LETSENCRYPT_HOST
+  #  value: "${BTCPAY_HOST},${BTCPAY_ADDITIONAL_HOSTS}"
+  #- name: LETSENCRYPT_EMAIL
+  #  value: "${LETSENCRYPT_EMAIL:-<no value>}"
+  #- name: HIDDENSERVICE_NAME
+  #  value: "BTCPayServer"
+  #- name: HIDDENSERVICE_REVERSEPROXY
+  #  value: "nginx"
+  #- name: BTCPAY_TORRCFILE
+  #  value: "/usr/local/etc/tor/torrc-2"
+  #- name: BTCPAY_SOCKSENDPOINT
+  #  value: "tor:9050"  
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+  
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: false
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+  
+  podAnnotations: {}
+  
+  podSecurityContext: {}
+    # fsGroup: 2000
+  
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+  
+  port: 49392
+
+  service:
+    type: ClusterIP
+    port: 80
+  
+  ingress:
+    enabled: true
+    host: btcpay.example.com
+    annotations:
+      kubernetes.io/ingress.class: traefik
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: btcpay.example.com
+        paths:
+          - "/"
+    tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+  
+  resources: {}
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+  
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+  
+  PersistentVolumeClaim:
+    storageClassName: "manual-prov"
+
+  nodeSelector: {}
+  
+  tolerations: []
+  
+  affinity: {}
+  
+nbxplorer:
+  replicaCount: 1
+  image:
+    repository: nicolasdorier/nbxplorer
+    tag: "2.1.49"
+    pullPolicy: IfNotPresent
+
+  env:
+    - name: NBXPLORER_TRIMEVENTS
+      value: "10000"
+    - name: NBXPLORER_CHAINS
+      value: "btc"
+
+  service:
+    type: ClusterIP
+    port: 32838
+  
+  PersistentVolumeClaim:
+    storageClassName: "manual-prov"
+  
+  autoscaling:
+    enabled: false
+
+bitcoind:
+  replicaCount: 1
+  image:
+    repository: btcpayserver/bitcoin
+    tag: "0.21.0"
+    pullPolicy: IfNotPresent
+
+  env: {}
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+
+  service:
+    type: ClusterIP
+    rpcPort: 43782
+    httpPort: 39388
+  
+  PersistentVolumeClaim:
+    storageClassName: "manual-prov"
+  
+  autoscaling:
+    enabled: false

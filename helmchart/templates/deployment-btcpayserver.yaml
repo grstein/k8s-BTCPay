@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: btcpayserver
+  labels:
+    {{- include "btcpayserver.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.btcpayserver.autoscaling.enabled }}
+  replicas: {{ .Values.btcpayserver.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "btcpayserver.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.btcpayserver.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "btcpayserver.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.btcpayserver.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "btcpayserver.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.btcpayserver.podSecurityContext | nindent 8 }}
+      containers:
+        - name: btcpayserver
+          securityContext:
+            {{- toYaml .Values.btcpayserver.securityContext | nindent 12 }}
+          image: "{{ .Values.btcpayserver.image.repository }}:{{ .Values.btcpayserver.image.tag }}"
+          imagePullPolicy: {{ .Values.btcpayserver.image.pullPolicy }}
+          env:
+            - name: BTCPAY_NETWORK
+              value: "{{ .Values.network }}"
+            - name: NBITCOIN_NETWORK
+              value: "{{ .Values.network }}"
+            - name: BTCPAY_BIND
+              value: "0.0.0.0:{{ .Values.btcpayserver.port }}"
+            - name: BTCPAY_HOST
+              value: "{{ .Values.btcpayserver.ingress.host }}"
+            - name: BTCPAY_DOCKERDEPLOYMENT
+              value: "true"
+            - name: BTCPAY_ROOTPATH
+              value: "/"
+            - name: BTCPAY_BTCEXPLORERURL
+              value: "http://nbxplorer:{{ .Values.nbxplorer.service.port }}/"
+            {{- toYaml .Values.btcpayserver.env | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 49392
+              protocol: TCP
+          # livenessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
+          # readinessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
+          resources:
+            {{- toYaml .Values.btcpayserver.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /root/.nbxplorer
+              name: nbxplorer-datadir
+            - mountPath: /datadir
+              name: btcpay-datadir
+            - mountPath: "/datadir/TestNet"
+              name: btcpay-settings
+      volumes:
+        - name: nbxplorer-datadir
+          persistentVolumeClaim:
+            claimName: nbxplorer-datadir
+        - name: btcpay-datadir
+          persistentVolumeClaim:
+            claimName: btcpay-datadir
+        - name: btcpay-settings
+          configMap:
+            name: btcpay-settings
+      {{- with .Values.btcpayserver.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.btcpayserver.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.btcpayserver.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

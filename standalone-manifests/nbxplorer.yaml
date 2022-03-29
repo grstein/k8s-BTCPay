@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nbxplorer
+  labels:
+    app: nbxplorer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nbxplorer
+  template:
+    metadata:
+      labels:
+        app: nbxplorer
+    spec:
+      containers:
+      - name: nbxplorer
+        image: nicolasdorier/nbxplorer:2.1.49
+        ports:
+        - containerPort: 32838
+        env:
+        - name: NBXPLORER_NETWORK
+          value: "mainnet"
+        - name: NBXPLORER_BIND
+          value: "0.0.0.0:32838"
+        - name: NBXPLORER_TRIMEVENTS
+          value: "10000"
+        - name: NBXPLORER_SIGNALFILESDIR
+          value: "/datadir"
+        - name: NBXPLORER_CHAINS
+          value: "btc"
+        - name: NBXPLORER_BTCRPCURL
+          value: "http://bitcoind-rpc.bitcoind:43782/"
+        - name: NBXPLORER_BTCNODEENDPOINT
+          value: "bitcoind.bitcoind:39388"
+        volumeMounts:
+        - mountPath: /datadir
+          name: nbxplorer-datadir
+        - mountPath: /root/.bitcoin
+          name: bitcoin-datadir
+      volumes:
+      - name: nbxplorer-datadir
+        persistentVolumeClaim:
+          claimName: nbxplorer-datadir
+      - name: bitcoin-datadir
+        persistentVolumeClaim:
+          claimName: bitcoin-datadir
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nbxplorer-datadir
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nbxplorer-datadir
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  local:
+    path: /path/to/nbxplorer-datadir
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nbxplorer
+spec:
+  selector:
+    app: nbxplorer
+  ports:
+    - protocol: TCP
+      port: 32838
+      targetPort: 32838
